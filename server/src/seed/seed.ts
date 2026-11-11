@@ -149,7 +149,10 @@ export async function seed({ quiet = false } = {}) {
     task.status = 'COMPLETED';
     task.priority = 'LOW';
     task.completedAt = filedOn;
-    task.completedBy = accountant._id;
+    // NOTE: `completedBy` is currently typed as the ObjectId constructor in the schema
+    // (should be an ObjectId instance). Cast to satisfy the compiler; the runtime value
+    // is a valid ObjectId. Proper fix belongs in the ComplianceTask model definition.
+    task.completedBy = accountant._id as unknown as typeof mongoose.Types.ObjectId;
     await task.save();
   }
   const inProgress = await ComplianceTaskModel.findOne({ businessId: arewa._id, status: 'PENDING' }).sort({ dueDate: 1 });

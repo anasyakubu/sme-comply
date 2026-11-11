@@ -2,6 +2,7 @@
  * Module purpose: Implements registration, login, token rotation, email verification, password recovery, and credential checks.
  */
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 import { env } from '../config/env';
 import { signAccessToken } from '../middleware/auth';
 import { memberRepository, refreshTokenRepository, userRepository } from '../repositories';
@@ -81,7 +82,10 @@ export const authService = {
     // Registration also accepts any invitations that were issued to this email before the account existed.
     const pending = await memberRepository.find({ invitedEmail: email, status: 'INVITED' });
     for (const invite of pending) {
-      invite.user = user._id;
+      // NOTE: `BusinessMember.user` is currently typed as the ObjectId constructor in the schema
+      // (should be an ObjectId instance). Cast to satisfy the compiler; the runtime value is a
+      // valid ObjectId. Proper fix belongs in the BusinessMember model definition.
+      invite.user = user._id as unknown as typeof mongoose.Types.ObjectId;
       invite.status = 'ACTIVE';
       invite.joinedAt = new Date();
       await invite.save();

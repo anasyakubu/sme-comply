@@ -18,75 +18,79 @@ export interface ReportParams {
  * Loads tasks and filings for the requested business/date range, then calculates compliance totals and agency summaries.
  */
 async function buildComplianceReport({ businessId, from, to }: ReportParams) {
-    const business = await businessRepository.findById(businessId);
-    if (!business) throw ApiError.notFound('Business not found');
-    const bId = new Types.ObjectId(businessId);
-    // Report counts come only from tasks inside the selected date interval and exclude not-applicable tasks.
-    const tasks = await taskRepository.find(
-      { businessId: bId, dueDate: { $gte: from, $lte: to }, status: { $ne: 'NOT_APPLICABLE' } },
-      { sort: { dueDate: 1 }, populate: { path: 'agencyId', select: 'acronym name' } },
-    );
-    const filings = await filingRepository.find(
-      { businessId: bId, filingDate: { $gte: from, $lte: to } },
-      { sort: { filingDate: -1 }, populate: [{ path: 'taskId', select: 'title periodLabel' }, { path: 'filedBy', select: 'firstName lastName' }] },
-    );
-    const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
-    const overdue = tasks.filter((t) => t.status === 'OVERDUE').length;
-    const pending = tasks.length - completed - overdue;
-    const onTime = tasks.filter((t) => t.status === 'COMPLETED' && t.completedAt && t.completedAt <= new Date(t.dueDate.getTime() + 86_399_999)).length;
+  const business = await businessRepository.findById(businessId);
+  if (!business) throw ApiError.notFound('Business not found');
+  const bId = new Types.ObjectId(businessId);
+  // Report counts come only from tasks inside the selected date interval and exclude not-applicable tasks.
+  const tasks = await taskRepository.find(
+    { businessId: bId, dueDate: { $gte: from, $lte: to }, status: { $ne: 'NOT_APPLICABLE' } },
+    { sort: { dueDate: 1 }, populate: { path: 'agencyId', select: 'acronym name' } },
+  );
+  const filings = await filingRepository.find(
+    { businessId: bId, filingDate: { $gte: from, $lte: to } },
+    { sort: { filingDate: -1 }, populate: [{ path: 'taskId', select: 'title periodLabel' }, { path: 'filedBy', select: 'firstName lastName' }] },
+  );
+  const completed = tasks.filter((t) => t.status === 'COMPLETED').length;
+  const overdue = tasks.filter((t) => t.status === 'OVERDUE').length;
+  const pending = tasks.length - completed - overdue;
+  const onTime = tasks.filter((t) => t.status === 'COMPLETED' && t.completedAt && t.completedAt <= new Date(t.dueDate.getTime() + 86_399_999)).length;
 
-    const byAgency = new Map<string, { agency: string; total: number; completed: number; overdue: number }>();
-    for (const t of tasks) {
-      const key = (t.agencyId as any)?.acronym ?? 'Other';
-      const e = byAgency.get(key) ?? { agency: key, total: 0, completed: 0, overdue: 0 };
-      e.total++;
-      if (t.status === 'COMPLETED') e.completed++;
-      if (t.status === 'OVERDUE') e.overdue++;
-      byAgency.set(key, e);
-    }
+  const byAgency = new Map<string, { agency: string; total: number; completed: number; overdue: number }>();
+  for (const t of tasks) {
+    const key = (t.agencyId as any)?.acronym ?? 'Other';
+    const e = byAgency.get(key) ?? { agency: key, total: 0, completed: 0, overdue: 0 };
+    e.total++;
+    if (t.status === 'COMPLETED') e.completed++;
+    if (t.status === 'OVERDUE') e.overdue++;
+    byAgency.set(key, e);
+  }
 
-    return {
-      generatedAt: new Date(),
-      business: {
-        _id: business._id,
-        businessName: business.businessName,
-        legalName: business.legalName,
-        registrationNumber: business.registrationNumber,
-        taxIdentificationNumber: business.taxIdentificationNumber,
-        state: business.state,
-        businessType: business.businessType,
-      },
-      period: { from, to },
-      summary: {
-        total: tasks.length,
-        completed,
-        pending,
-        overdue,
-        completedOnTime: onTime,
-        compliancePercentage: complianceRate(completed, overdue),
-      },
-      byAgency: [...byAgency.values()],
-      tasks: tasks.map((t) => ({
-        _id: t._id,
-        title: t.title,
-        agency: (t.agencyId as any)?.acronym ?? '',
-        category: t.category,
-        period: t.periodLabel ?? t.period,
-        dueDate: t.dueDate,
-        status: t.status,
-        completedAt: t.completedAt,
-      })),
-      filings: filings.map((f) => ({
-        _id: f._id,
-        task: (f.taskId as any)?.title ?? '',
-        period: (f.taskId as any)?.periodLabel ?? '',
-        filingDate: f.filingDate,
-        referenceNumber: f.referenceNumber,
-        status: f.status,
-        submittedTo: f.submittedTo,
-        filedBy: f.filedBy ? `${(f.filedBy as any).firstName} ${(f.filedBy as any).lastName}` : '',
-      })),
-    };
+  return {
+    generatedAt: new Date(),
+    business: {
+      _id: business._id,
+      businessName: business.businessName,
+      legalName: business.legalName,
+      registrationNumber: business.registrationNumber,
+      taxIdentificationNumber: business.taxIdentificationNumber,
+      state: business.state,
+      businessType: business.businessType,
+    },
+    period: { from, to },
+    summary: {
+      total: tasks.length,
+      completed,
+      pending,
+      overdue,
+      completedOnTime: onTime,
+      compliancePercentage: complianceRate(completed, overdue),
+    },
+    byAgency: [...byAgency.values()],
+    tasks: tasks.map((t) => ({
+      _id: t._id,
+      title: t.title,
+      agency: (t.agencyId as any)?.acronym ?? '',
+      category: t.category,
+      period: t.periodLabel ?? t.period,
+      dueDate: t.dueDate,
+      status: t.status,
+      completedAt: t.completedAt,
+    })),
+    filings: filings.map((f) => ({
+      _id: f._id,
+      task: (f.taskId as any)?.title ?? '',
+      period: (f.taskId as any)?.periodLabel ?? '',
+      // NOTE: `FilingRecord.filingDate` is typed loosely in the schema (Date-like | null | undefined)
+      // rather than as `Date`. The query above filters by `filingDate: { $gte: from, $lte: to }`,
+      // so any returned record has a valid Date here. Assert to `Date` so downstream consumers
+      // (formatDate in toPdf) see the correct type.
+      filingDate: f.filingDate as unknown as Date,
+      referenceNumber: f.referenceNumber,
+      status: f.status,
+      submittedTo: f.submittedTo,
+      filedBy: f.filedBy ? `${(f.filedBy as any).firstName} ${(f.filedBy as any).lastName}` : '',
+    })),
+  };
 }
 
 export type ComplianceReport = Awaited<ReturnType<typeof buildComplianceReport>>;

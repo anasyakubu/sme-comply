@@ -48,19 +48,22 @@ export const filingService = {
       amountPaid: input.amountPaid,
       documents: (input.documents ?? []) as any,
     });
+    // NOTE: `FilingRecord.status` is currently typed as `unknown` on the create() result
+    // (should be a string union). Normalize it locally so subsequent uses are well-typed.
+    const filingStatus = (filing.status as string | undefined) ?? 'SUBMITTED';
     if (input.documents?.length) {
       await documentRepository.updateMany({ _id: { $in: input.documents } }, { filingId: filing._id, taskId: task._id });
     }
     await auditService.log(ctx, 'FILING_RECORDED', 'FilingRecord', String(filing._id), {
       businessId,
-      metadata: { taskId: input.taskId, status: filing.status, referenceNumber: filing.referenceNumber },
+      metadata: { taskId: input.taskId, status: filingStatus, referenceNumber: filing.referenceNumber },
     });
     await notificationService.notifyBusiness(
       businessId,
-      { type: 'FILING_RECORDED', title: `Filing recorded: ${task.title}`, message: `${task.periodLabel ?? task.period} — ${filing.status.toLowerCase()}.`, relatedTaskId: input.taskId },
+      { type: 'FILING_RECORDED', title: `Filing recorded: ${task.title}`, message: `${task.periodLabel ?? task.period} — ${filingStatus.toLowerCase()}.`, relatedTaskId: input.taskId },
       user.id,
     );
-    const shouldComplete = input.markTaskCompleted ?? ['SUBMITTED', 'ACCEPTED'].includes(filing.status);
+    const shouldComplete = input.markTaskCompleted ?? ['SUBMITTED', 'ACCEPTED'].includes(filingStatus);
     if (shouldComplete && task.status !== 'COMPLETED') await taskService.complete(input.taskId, user, ctx);
     return filing;
   },
