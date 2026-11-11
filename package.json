@@ -1,0 +1,19 @@
+{
+  "name": "sme-comply",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated regulatory filing tracker and reminder system for Nigerian SMEs",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "seed": "npm run seed --prefix server",
+    "build": "npm run build --prefix server && npm run build --prefix client",
+    "test": "npm test --prefix server && npm test --prefix client",
+    "lint": "npm run lint --prefix server && npm run lint --prefix client",
+    "typecheck": "npm run typecheck --prefix server && npm run typecheck --prefix client"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

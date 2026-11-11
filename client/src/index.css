@@ -1,0 +1,48 @@
+/* The app uses Tailwind for shared utilities, then adds accessible base styles and reusable component classes. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles set the product palette and a visible keyboard-focus indicator. */
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-paper text-ink-900 font-sans antialiased; font-feature-settings: 'tnum' 0; }
+  h1, h2, h3 { @apply text-ink-900; letter-spacing: -0.01em; }
+  :focus-visible { @apply outline-none ring-2 ring-ledger-500 ring-offset-2 ring-offset-paper; }
+  ::selection { @apply bg-ledger-100; }
+}
+
+/* These utility-like classes are reused by form fields, panels, and links throughout React pages. */
+@layer components {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .panel { @apply bg-white border border-line rounded-lg; }
+  .label { @apply block text-sm font-medium text-ink-900 mb-1; }
+  .input {
+    @apply block w-full rounded border border-line bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400
+      focus:border-ledger-600 focus:outline-none focus:ring-2 focus:ring-ledger-100 disabled:bg-paper disabled:text-ink-500;
+  }
+  .input-error { @apply border-signal-600 focus:border-signal-600 focus:ring-signal-50; }
+  .link { @apply text-ledger-700 underline decoration-ledger-100 underline-offset-2 hover:decoration-ledger-600; }
+}
+
+/* FullCalendar, restyled to the ledger palette */
+.fc { --fc-border-color: #DDE2DC; --fc-today-bg-color: #EAF3EE; --fc-page-bg-color: #fff; font-size: 0.85rem; }
+.fc .fc-toolbar-title { font-size: 1.125rem; font-weight: 700; color: #14233B; }
+.fc .fc-button { background: #fff; border-color: #DDE2DC; color: #14233B; text-transform: none; box-shadow: none; }
+.fc .fc-button:hover { background: #F6F7F5; color: #14233B; border-color: #DDE2DC; }
+.fc .fc-button-primary:not(:disabled).fc-button-active, .fc .fc-button-primary:not(:disabled):active { background: #14233B; border-color: #14233B; color: #fff; }
+.fc .fc-daygrid-event { border-radius: 4px; padding: 1px 4px; cursor: pointer; }
+.fc .fc-col-header-cell-cushion { color: #5B6676; font-weight: 600; font-size: 0.75rem; }
+.fc .fc-daygrid-day-number { color: #2E3F58; }
+
+/* Respect the operating-system preference to reduce animations for accessibility. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Hide interactive controls and simplify backgrounds in printed reports/pages. */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+  .panel { border-color: #ccc; }
+}

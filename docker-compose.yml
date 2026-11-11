@@ -1,0 +1,44 @@
+# Local full stack: MongoDB + API + web client.
+#   docker compose up --build
+#   docker compose exec server node dist/seed/seed.js   (loads sample data)
+# Web: http://localhost:8080   API: http://localhost:5000   Docs: http://localhost:5000/api-docs
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+
+  server:
+    build: ./server
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    env_file:
+      - ./server/.env
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/sme_comply
+      CLIENT_URL: http://localhost:8080
+      # Compose runs over plain http on localhost, so keep dev-style cookies here.
+      NODE_ENV: development
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "5000:5000"
+
+  client:
+    build:
+      context: ./client
+      args:
+        VITE_API_URL: http://localhost:5000/api/v1
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "8080:80"
+
+volumes:
+  mongo-data:
+  uploads:
